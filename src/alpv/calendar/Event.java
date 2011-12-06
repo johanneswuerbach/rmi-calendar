@@ -3,7 +3,7 @@ package alpv.calendar;
 import java.io.Serializable;
 import java.util.Date;
 
-public final class Event implements Serializable {
+public final class Event implements Serializable, Comparable<Event> {
 	
 	private static final long serialVersionUID = 3084014581109727872L;
 
@@ -76,5 +76,14 @@ public final class Event implements Serializable {
 	 */
 	public void setBegin(Date begin) {
 		this.begin = begin;
+	}
+
+	@Override
+	public int compareTo(Event arg0) {
+		int dateComp = this.getBegin().compareTo(arg0.getBegin());
+		if (dateComp != 0){
+			return dateComp;
+		} //if both have the same begin-time, order by id
+		else return Long.valueOf(this.getId()).compareTo(arg0.getId());
 	}
 }

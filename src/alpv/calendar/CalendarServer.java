@@ -29,13 +29,14 @@ public interface CalendarServer extends Remote {
 	boolean removeEvent(long id) throws RemoteException;
 
 	/**
-	 * sets every field of the event with the same id to the new values
+	 * sets every field of the event with the same id to the new values of e
 	 * 
-	 * @param id
+	 * @param id 
+	 * @param e
 	 * @return true if e.id exists and the server was able to update every field
 	 * @throws RemoteException
 	 */
-	boolean updateEvent(long id) throws RemoteException;
+	boolean updateEvent(long id, Event e) throws RemoteException;
 
 	/**
 	 * 

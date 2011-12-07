@@ -105,7 +105,7 @@ public class CalendarClient implements EventCallback, Serializable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		// Unregister from all callbacks
 		try {
 			_calendarServer.UnregisterCallback(this);

@@ -1,14 +1,10 @@
 package alpv.calendar;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.AccessException;
@@ -19,7 +15,6 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -42,29 +37,17 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	public CalendarServerImpl(int port) throws RemoteException {
 
 		// Load data from file or use new data
-		HashMap<Long, Event> events = new HashMap<Long, Event>();
-		HashMap<String, ArrayList<Event>> userEvents = new HashMap<String, ArrayList<Event>>();
-		PriorityQueue<Event> upcomingEvents = new PriorityQueue<Event>();
-
-		if ((new File(FILE)).exists()) {
-			try {
-				FileInputStream fin = new FileInputStream(FILE);
-				ObjectInputStream ois = new ObjectInputStream(fin);
-				CalendarServerData calendarData = (CalendarServerData) ois
-						.readObject();
-				ois.close();
-
-				events = calendarData.getEvents();
-				upcomingEvents = calendarData.getUpcomingEvents();
-				userEvents = calendarData.getUserEvents();
-
-			} catch (Exception e) {
-				System.err.println("Data file not usable.");
-			}
+		CalendarServerData calendarData = CalendarServerData.load();
+		if (calendarData == null) {
+			_events = new HashMap<Long, Event>();
+			_upcomingEvents = new PriorityQueue<Event>();
+			_userEvents = new HashMap<String, ArrayList<Event>>();
+		} else {
+			_events = calendarData.getEvents();
+			_upcomingEvents = calendarData.getUpcomingEvents();
+			_userEvents = calendarData.getUserEvents();
 		}
-		_events = events;
-		_upcomingEvents = upcomingEvents;
-		_userEvents = userEvents;
+
 		_userCallbacks = new HashMap<String, ArrayList<EventCallback>>();
 
 		// Create RMI
@@ -77,7 +60,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		} catch (UnknownHostException e) {
 			System.err.println("Can't determine adress.");
 		}
-		
+
 		// Set running
 		_running = true;
 
@@ -258,21 +241,25 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Get list of upcoming events
 	 */
-	private PriorityQueue<Event> getUpcomingEvents() {
+	PriorityQueue<Event> getUpcomingEvents() {
 		return _upcomingEvents;
 	}
 
 	/**
 	 * Notifiy about an event
 	 */
-	public void nextEvent(Event e) {
-		ArrayList<EventCallback> callbacks = _userCallbacks.get(e.getUser());
-		if (callbacks != null) {
-			for (EventCallback callback : callbacks) {
-				try {
-					callback.call(e);
-				} catch (RemoteException e1) {
-					System.err.println("Callback failed.");
+	public void notify(Event e) {
+		System.out.println("Notifiy");
+
+		for (String user : e.getUser()) {
+			ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
+			if (callbacks != null) {
+				for (EventCallback callback : callbacks) {
+					try {
+						callback.call(e);
+					} catch (RemoteException e1) {
+						System.err.println("Callback failed.");
+					}
 				}
 			}
 		}
@@ -294,147 +281,13 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 			System.err.println("Can't close server.");
 		}
 
-		// Store data
-		try {
-			FileOutputStream fout = new FileOutputStream(FILE);
-			ObjectOutputStream oos = new ObjectOutputStream(fout);
-			oos.writeObject(new CalendarServerData(_events, _upcomingEvents,
-					_userEvents));
-			oos.close();
-		} catch (Exception e) {
-			System.err.println("Can't store data.");
+		// Save data
+		if (!CalendarServerData.save(_events, _upcomingEvents, _userEvents)) {
+			System.err.println("Can't save data.");
 		}
 	}
 
 	public boolean running() {
 		return _running;
-	}
-
-	private class CalendarServerData implements Serializable {
-
-		private static final long serialVersionUID = 995624507044214456L;
-		private final HashMap<Long, Event> _events;
-		private final PriorityQueue<Event> _upcomingEvents;
-		private final HashMap<String, ArrayList<Event>> _userEvents;
-
-		public CalendarServerData(HashMap<Long, Event> events,
-				PriorityQueue<Event> upcomingEvents,
-				HashMap<String, ArrayList<Event>> userEvents) {
-			_events = events;
-			_upcomingEvents = upcomingEvents;
-			_userEvents = userEvents;
-		}
-
-		public PriorityQueue<Event> getUpcomingEvents() {
-			return _upcomingEvents;
-		}
-
-		public HashMap<Long, Event> getEvents() {
-			return _events;
-		}
-
-		public HashMap<String, ArrayList<Event>> getUserEvents() {
-			return _userEvents;
-		}
-
-	}
-
-	private class CalendarServerUI implements Runnable {
-
-		private final CalendarServerImpl _server;
-
-		public CalendarServerUI(CalendarServerImpl server) {
-			_server = server;
-		}
-
-		public void run() {
-
-			System.out.print("Welcome to calendar server.\n"
-					+ "Possible commands:\n"
-					+ "quite - shutdown the server and save data\n");
-
-			BufferedReader br = new BufferedReader(new InputStreamReader(
-					System.in));
-			try {
-				while (true) {
-
-					String line = br.readLine();
-
-					// Shutdown the server
-					if (line.equals("quite")) {
-						_server.close();
-						break;
-					}
-				}
-				br.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-
-			System.out.println("Bye.");
-			// No other way to close RMI, ...
-			System.exit(0);
-		}
-	}
-
-	private class CalendarServerNotificator implements Runnable {
-
-		private final CalendarServerImpl _server;
-		private static final int SLEEP = 200;
-		private long _lastRun;
-
-		public CalendarServerNotificator(CalendarServerImpl server) {
-			_server = server;
-			_lastRun = currentTime();
-		}
-
-		@Override
-		public void run() {
-			
-			while (_server.running()) {
-
-				PriorityQueue<Event> events = _server.getUpcomingEvents();
-
-				// Remove all events before last run
-				Event event = events.peek();
-				boolean found = false;
-				while(event != null && !found) {
-					System.out.println(events.size());
-					if (_lastRun < event.getBegin().getTime()) {
-						events.poll();
-						event = events.peek();
-					} else {
-						found = true;
-					}
-				}
-
-				long currentTime = currentTime();
-				if (event != null) {
-					System.out.println("Found");
-					long abs = event.getBegin().getTime() - _lastRun;
-					if (abs < SLEEP) {
-						// Notifiy
-						events.poll();
-						_server.nextEvent(event);
-						System.out.println("Notifiy");
-					}
-				}
-
-				_lastRun = currentTime;
-
-				try {
-					Thread.sleep(SLEEP);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-
-			}
-
-		}
-
-		public long currentTime() {
-			Calendar calendar = Calendar.getInstance();
-			return calendar.getTime().getTime();
-		}
 	}
 }

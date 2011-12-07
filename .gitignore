@@ -3,3 +3,4 @@
 /.project
 /calendar.dat
 bin
+.DS_Store

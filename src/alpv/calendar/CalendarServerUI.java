@@ -4,6 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+/**
+ * Commandline UI for server
+ */
 public class CalendarServerUI implements Runnable {
 	private final CalendarServerImpl _server;
 

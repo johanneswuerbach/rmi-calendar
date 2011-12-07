@@ -118,6 +118,9 @@ public class CalendarClient implements EventCallback, Serializable {
 		System.out.println("Bye.");
 	}
 
+	/**
+	 * Parse an event from strings
+	 */
 	public Event parseEvent(String name, String user, String date)
 			throws ParseException {
 
@@ -131,6 +134,9 @@ public class CalendarClient implements EventCallback, Serializable {
 
 	}
 
+	/**
+	 * Parse list of parameters from string
+	 */
 	public String[] getParameters(String line) throws IllegalArgumentException {
 		String[] parts = line.split(": ");
 		if (parts.length == 2) {
@@ -140,7 +146,9 @@ public class CalendarClient implements EventCallback, Serializable {
 		throw new IllegalArgumentException();
 	}
 
-	@Override
+	/**
+	 * Callable from server, if registered event happens
+	 */
 	public void call(Event e) throws RemoteException {
 		System.out.println("Notification from server");
 		System.out.println(e);

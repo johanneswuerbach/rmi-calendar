@@ -19,6 +19,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		CalendarServer {
 
 	private static final long serialVersionUID = 65300214135859767L;
+	private static final String NAME = "calendarServer";
 
 	private final HashMap<Long, Event> _events;
 	private final PriorityQueue<Event> _upcomingEvents;
@@ -42,11 +43,12 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 			_userEvents = calendarData.getUserEvents();
 		}
 
+		// List for callbacks
 		_userCallbacks = new HashMap<String, ArrayList<EventCallback>>();
 
 		// Create RMI
 		_registry = LocateRegistry.createRegistry(port);
-		_registry.rebind("calendarServer", this);
+		_registry.rebind(NAME, this);
 
 		try {
 			String address = (InetAddress.getLocalHost()).toString();
@@ -70,7 +72,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	 */
 	public synchronized long addEvent(Event e) throws RemoteException {
 		long id = e.getBegin().getTime();
-		while (_events.containsValue(id)) {
+		while (_events.get(id) != null) {
 			id++;
 		}
 		e.setId(id);
@@ -247,16 +249,14 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Notifiy about an event
 	 */
-	public void notify(Event e) {
-		System.out.println("Notifiy");
-
-		for (String user : e.getUser()) {
+	public void notify(Event event) {
+		for (String user : event.getUser()) {
 			ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
 			if (callbacks != null) {
 				for (EventCallback callback : callbacks) {
 					try {
-						callback.call(e);
-					} catch (RemoteException e1) {
+						callback.call(event);
+					} catch (RemoteException e) {
 						System.err.println("Callback failed.");
 					}
 				}
@@ -274,7 +274,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 
 		// Close RMI
 		try {
-			_registry.unbind("calendarServer");
+			_registry.unbind(NAME);
 		} catch (AccessException e) {
 			System.err.println("Can't close server.");
 		} catch (RemoteException e) {

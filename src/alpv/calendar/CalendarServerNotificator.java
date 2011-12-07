@@ -3,6 +3,9 @@ package alpv.calendar;
 import java.util.Calendar;
 import java.util.PriorityQueue;
 
+/**
+ * Checks event queue for now starting events
+ */
 public class CalendarServerNotificator implements Runnable {
 
 	private final CalendarServerImpl _server;
@@ -14,7 +17,9 @@ public class CalendarServerNotificator implements Runnable {
 		_lastRun = currentTime();
 	}
 
-	@Override
+	/**
+	 * Start checking
+	 */
 	public void run() {
 
 		while (_server.running()) {
@@ -33,13 +38,19 @@ public class CalendarServerNotificator implements Runnable {
 				}
 			}
 
-			if (event != null) {
+			// Notifies server if events happen in current iteration
+			boolean finished = false;
+			while(event != null && !finished) {
 				// Check, whether notify now or later
 				long abs = event.getBegin().getTime() - _lastRun;
 				if (abs < SLEEP) {
 					// Notifiy
 					events.poll();
 					_server.notify(event);
+					event = events.peek();
+				}
+				else {
+					finished = true;
 				}
 			}
 
@@ -55,6 +66,9 @@ public class CalendarServerNotificator implements Runnable {
 
 	}
 
+	/**
+	 * Returns current time in millis
+	 */
 	public long currentTime() {
 		Calendar calendar = Calendar.getInstance();
 		return calendar.getTime().getTime();

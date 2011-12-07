@@ -10,6 +10,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 
+/**
+ * Container for all server data
+ * Provides methods to save to file and load from file
+ */
 public class CalendarServerData implements Serializable {
 
 	private static final long serialVersionUID = 995624507044214456L;
@@ -39,6 +43,9 @@ public class CalendarServerData implements Serializable {
 		return _userEvents;
 	}
 
+	/**
+	 * Load data from file
+	 */
 	public static CalendarServerData load() {
 		if ((new File(FILE)).exists()) {
 			try {
@@ -59,6 +66,9 @@ public class CalendarServerData implements Serializable {
 		return null;
 	}
 
+	/**
+	 * Save data to a file
+	 */
 	public static boolean save(HashMap<Long, Event> events,
 			PriorityQueue<Event> upcomingEvents,
 			HashMap<String, ArrayList<Event>> userEvents) {

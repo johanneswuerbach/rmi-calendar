@@ -93,11 +93,6 @@ public final class Event implements Serializable, Comparable<Event> {
 		else
 			return Long.valueOf(this.getId()).compareTo(arg0.getId());
 	}
-
-	public boolean isAfter(Date date) {
-		return this.getBegin().after(date);
-	}
-	
 	
 	public String toString() {
 		

@@ -15,6 +15,7 @@ public class CalendarServerUI implements Runnable {
 
 		System.out.print("Welcome to calendar server.\n"
 				+ "Possible commands:\n"
+				+ "flush - removes all data from server\n"
 				+ "quite - shutdown the server and save data\n");
 
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -27,6 +28,10 @@ public class CalendarServerUI implements Runnable {
 				if (line.equals("quite")) {
 					_server.close();
 					break;
+				} else if (line.equals("flush")) {
+					_server.flush();
+				} else {
+					System.err.println("Unknown command.");
 				}
 			}
 			br.close();

@@ -45,13 +45,13 @@ public class CalendarClient implements EventCallback, Serializable {
 				String line = br.readLine();
 
 				try {
-					if (line.startsWith("add")) {
+					if (line.startsWith("add:")) {
 						// Add a new event
 						String params[] = getParameters(line);
 						long id = _calendarServer.addEvent(parseEvent(
 								params[0], params[1], params[2]));
 						System.out.println("Event created with id: " + id);
-					} else if (line.startsWith("update")) {
+					} else if (line.startsWith("update:")) {
 						// Update an event
 						String params[] = getParameters(line);
 						boolean success = _calendarServer.updateEvent(
@@ -64,7 +64,7 @@ public class CalendarClient implements EventCallback, Serializable {
 							System.out.println("Can't update the event.");
 						}
 
-					} else if (line.startsWith("remove")) {
+					} else if (line.startsWith("remove:")) {
 						// Remove an event
 						String params[] = getParameters(line);
 						boolean success = _calendarServer
@@ -76,7 +76,7 @@ public class CalendarClient implements EventCallback, Serializable {
 							System.out.println("Can't remove the event.");
 						}
 
-					} else if (line.startsWith("list")) {
+					} else if (line.startsWith("list:")) {
 						String params[] = getParameters(line);
 						List<Event> events = _calendarServer
 								.listEvents(params[0]);
@@ -87,13 +87,15 @@ public class CalendarClient implements EventCallback, Serializable {
 								System.out.println(event);
 							}
 						}
-					} else if (line.startsWith("register")) {
+					} else if (line.startsWith("register:")) {
 						String params[] = getParameters(line);
 						_calendarServer.RegisterCallback(this, params[0]);
-					} else if (line.startsWith("unregister")) {
+					} else if (line.startsWith("unregister:")) {
 						_calendarServer.UnregisterCallback(this);
 					} else if (line.equals("quite")) {
 						break;
+					} else {
+						System.err.println("Unknown command.");
 					}
 				} catch (ParseException e) {
 					System.err.println("Invalid date format.");

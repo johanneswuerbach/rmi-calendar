@@ -1,10 +1,5 @@
 package alpv.calendar;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.AccessException;
@@ -24,7 +19,6 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		CalendarServer {
 
 	private static final long serialVersionUID = 65300214135859767L;
-	private static final String FILE = "calendar.dat";
 
 	private final HashMap<Long, Event> _events;
 	private final PriorityQueue<Event> _upcomingEvents;
@@ -148,9 +142,11 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		}
 
 		// Remove deleted users
-		removeFromUsers(removeUsers, remoteEvent);
+		removeFromUsers(removeUsers, localEvent);
 		// Add added users
-		addToUsers(addedUsers, remoteEvent);
+		addToUsers(addedUsers, localEvent);
+		// Update users in our event
+		localEvent.setUser(remoteEvent.getUser());
 
 		return true;
 	}
@@ -185,6 +181,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		}
 	}
 
+	/**
+	 * List events for a specific user
+	 */
 	public List<Event> listEvents(String user) throws RemoteException {
 		ArrayList<Event> events = _userEvents.get(user);
 		if (events == null) {
@@ -266,6 +265,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 
 	}
 
+	/**
+	 * Close the server
+	 */
 	public void close() {
 
 		_running = false;
@@ -287,7 +289,20 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		}
 	}
 
+	/**
+	 * Server running?
+	 */
 	public boolean running() {
 		return _running;
+	}
+
+	/**
+	 * Removes all data
+	 */
+	public void flush() {
+		_events.clear();
+		_upcomingEvents.clear();
+		_userEvents.clear();
+		_userCallbacks.clear();
 	}
 }

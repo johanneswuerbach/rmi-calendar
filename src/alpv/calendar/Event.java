@@ -1,6 +1,7 @@
 package alpv.calendar;
 
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 
@@ -98,11 +99,15 @@ public final class Event implements Serializable, Comparable<Event> {
 	}
 	
 	
-	public String toString() {		
-		String text = "Id: " + this.getId() + "\n"
-		+ "Datum: " + this.getBegin().toLocaleString() + "\n"
+	public String toString() {
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+		String date = sdf.format(this.getBegin());
+		
+		String event = "Id: " + this.getId() + "\n"
+		+ "Date: " + date + "\n"
 		+ "Name: " + this.getName() + "\n"
 		+ "Users: " + Arrays.toString(this.getUser()) + "\n";
-		return text;
+		return event;
 	}
 }

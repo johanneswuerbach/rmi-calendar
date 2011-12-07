@@ -1,5 +1,8 @@
 package alpv.calendar;
 
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+
 public class Main {
 	private static final String	USAGE	= String.format("usage: java -jar UB%%X_%%NAMEN server PORT%n" +
 														"         (to start a server)%n" +
@@ -12,26 +15,14 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 		
-		java.util.HashMap<Integer, String> map = new java.util.HashMap<Integer, String>();
-		map.put(1, "1");
-		map.put(5, "5");
-		map.put(8, "8");
-		map.put(20, "2");
-		map.put(9, "9");
-		map.put(3, "3");
-		
-		for(String test : map.values()) {
-			System.out.println(test);
-		}
-		
 		try {
 			int i = 0;
 
 			if(args[i].equals("server")) {
-				// TODO
+				new CalendarServerImpl(new Integer(args[++i]).intValue());
 			}
 			else if(args[i].equals("client")) {
-				// TODO
+				(new CalendarClient(args[++i], new Integer(args[++i]).intValue())).run();
 			}
 			else
 				throw new IllegalArgumentException();
@@ -44,6 +35,10 @@ public class Main {
 		}
 		catch(IllegalArgumentException e) {
 			System.err.println(USAGE);
+		} catch (RemoteException e) {
+			System.err.println("Can't connect. (RemoteException)");
+		} catch (NotBoundException e) {
+			System.err.println("Can't connect. (NotBoundException)");
 		}
 	}
 }

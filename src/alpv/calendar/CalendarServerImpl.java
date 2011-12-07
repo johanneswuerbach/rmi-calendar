@@ -20,7 +20,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Date;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -32,7 +32,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	private static final String FILE = "calendar.dat";
 
 	private final HashMap<Long, Event> _events;
-	private final HashMap<String, PriorityQueue<Event>> _userEvents;
+	private final PriorityQueue<Event> _upcomingEvents;
+	private final HashMap<String, ArrayList<Event>> _userEvents;
+	private final HashMap<String, ArrayList<EventCallback>> _userCallbacks;
 
 	private final Registry _registry;
 
@@ -40,7 +42,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 
 		// Load data from file or use new data
 		HashMap<Long, Event> events = new HashMap<Long, Event>();
-		HashMap<String, PriorityQueue<Event>> userEvents = new HashMap<String, PriorityQueue<Event>>();
+		HashMap<String, ArrayList<Event>> userEvents = new HashMap<String, ArrayList<Event>>();
+		PriorityQueue<Event> upcomingEvents = new PriorityQueue<Event>();
+
 		if ((new File(FILE)).exists()) {
 			try {
 				FileInputStream fin = new FileInputStream(FILE);
@@ -50,6 +54,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 				ois.close();
 
 				events = calendarData.getEvents();
+				upcomingEvents = calendarData.getUpcomingEvents();
 				userEvents = calendarData.getUserEvents();
 
 			} catch (Exception e) {
@@ -57,7 +62,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 			}
 		}
 		_events = events;
+		_upcomingEvents = upcomingEvents;
 		_userEvents = userEvents;
+		_userCallbacks = new HashMap<String, ArrayList<EventCallback>>();
 
 		// Create RMI
 		_registry = LocateRegistry.createRegistry(port);
@@ -72,6 +79,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 
 		// Create UI
 		(new Thread(new CalendarServerUI(this))).run();
+
+		// Create Notificator
+		(new Thread(new CalendarServerNotificator(this))).run();
 	}
 
 	/**
@@ -113,62 +123,43 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Updates an event
 	 */
-	public synchronized boolean updateEvent(long id, Event e) throws RemoteException {
-		e.setId(id);
-		Event oldEvent = _events.get(id);
-		if (oldEvent == null) {
+	public synchronized boolean updateEvent(long id, Event remoteEvent)
+			throws RemoteException {
+		remoteEvent.setId(id);
+		Event localEvent = _events.get(id);
+		if (localEvent == null) {
 			return false;
 		}
 
-		oldEvent.setName(e.getName());
+		localEvent.setName(remoteEvent.getName());
 
-		// Queues sorts only on access
-		boolean dateModified = false;
-		if (!oldEvent.getBegin().equals(e.getBegin())) {
-			dateModified = true;
-			oldEvent.setBegin(e.getBegin());
+		// If date changed, remove and readd to queue
+		if (!localEvent.getBegin().equals(remoteEvent.getBegin())) {
+			_upcomingEvents.remove(localEvent);
+			localEvent.setBegin(remoteEvent.getBegin());
+			_upcomingEvents.add(localEvent);
 		}
 
 		// Update users
 		// Check for added and deleted users
-		List<String> oldUsers = Arrays.asList(oldEvent.getUser());
+		List<String> oldUsers = Arrays.asList(localEvent.getUser());
 
 		ArrayList<String> removeUsers = new ArrayList<String>(oldUsers);
-		ArrayList<String> modifiyUsers = new ArrayList<String>();
 		ArrayList<String> addedUsers = new ArrayList<String>();
 
-		for (String user : e.getUser()) {
-			if (oldUsers.contains(user)) {
-				modifiyUsers.add(user);
-			} else {
+		for (String user : remoteEvent.getUser()) {
+			if (!oldUsers.contains(user)) {
 				addedUsers.add(user);
 			}
 			removeUsers.remove(user);
 		}
 
 		// Remove deleted users
-
-		removeFromUsers(removeUsers, e);
+		removeFromUsers(removeUsers, remoteEvent);
 		// Add added users
-		addToUsers(addedUsers, e);
-		// Modifiy exisiting users
-		if (dateModified) {
-			modifiyForUsers(modifiyUsers, e);
-		}
+		addToUsers(addedUsers, remoteEvent);
 
 		return true;
-	}
-
-	/**
-	 * Modifiy an event for a list of users
-	 */
-	private void modifiyForUsers(List<String> users, Event e) {
-		for (String user : users) {
-			PriorityQueue<Event> events = _userEvents.get(user);
-			events.remove(e);
-			events.add(e);
-			_userEvents.put(user, events);
-		}
 	}
 
 	/**
@@ -176,7 +167,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	 */
 	private void removeFromUsers(List<String> users, Event e) {
 		for (String user : users) {
-			PriorityQueue<Event> events = _userEvents.get(user);
+			ArrayList<Event> events = _userEvents.get(user);
 
 			events.remove(e);
 			if (events.isEmpty()) {
@@ -192,9 +183,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	 */
 	private void addToUsers(List<String> users, Event e) {
 		for (String user : users) {
-			PriorityQueue<Event> events = _userEvents.get(user);
+			ArrayList<Event> events = _userEvents.get(user);
 			if (events == null) {
-				events = new PriorityQueue<Event>();
+				events = new ArrayList<Event>();
 			}
 			events.add(e);
 			_userEvents.put(user, events);
@@ -202,44 +193,79 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	}
 
 	public List<Event> listEvents(String user) throws RemoteException {
-
-		PriorityQueue<Event> pq = _userEvents.get(user);
-		if (pq == null) {
-			return new ArrayList<Event>();
-		}
-
-		ArrayList<Event> events = new ArrayList<Event>();
-		for (Event e : pq) {
-			events.add(e);
+		ArrayList<Event> events = _userEvents.get(user);
+		if(events == null) {
+			events = new ArrayList<Event>();
 		}
 		return events;
 	}
 
 	public Event getNextEvent(String user) throws RemoteException {
-
-		Calendar calendar = Calendar.getInstance();
-		Date currentTime = calendar.getTime();
-
-		Event event = null;
-		do {
-			event = _userEvents.get(user).peek();
-		} while (event != null && !event.isAfter(currentTime));
-
-		// TODO blocking
-
-		return event;
+		// TODO
+		return null;
 	}
 
-	@Override
+	/**
+	 * Register for event callbacks for a specific user
+	 */
 	public void RegisterCallback(EventCallback ec, String user)
 			throws RemoteException {
-		// TODO Auto-generated method stub
-
+		
+		ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
+		if(callbacks == null) {
+			callbacks = new ArrayList<EventCallback>();
+		}
+		callbacks.add(ec);
+		
+		_userCallbacks.put(user, callbacks);
+		
+	}
+	
+	/**
+	 * Unregister from event all registered callbacks
+	 */
+	public void UnregisterCallback(EventCallback ec) throws RemoteException {
+		Collection<ArrayList<EventCallback>> values = _userCallbacks.values();
+		for(ArrayList<EventCallback> list : values) {
+			if(list.contains(ec)) {
+				list.remove(ec);
+			}
+		}
+	}
+	
+	/**
+	 * Unregister from a single notification
+	 */
+	public void UnregisterCallback(EventCallback ec, String user) throws RemoteException {
+		ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
+		if(callbacks != null) {
+			callbacks.remove(ec);
+			_userCallbacks.put(user, callbacks);
+		}
 	}
 
-	@Override
-	public void UnregisterCallback(EventCallback ec) throws RemoteException {
-		// TODO Auto-generated method stub
+	/**
+	 * Get list of upcoming events
+	 */
+	private PriorityQueue<Event> getUpcomingEvents() {
+		return _upcomingEvents;
+	}
+
+	/**
+	 * Notifiy about an event
+	 */
+	public void nextEvent(Event e) {
+		ArrayList<EventCallback> callbacks = _userCallbacks.get(e.getUser());
+		if (callbacks != null) {
+			for (EventCallback callback : callbacks) {
+				try {
+					callback.call(e);
+				} catch (RemoteException e1) {
+					System.err.println("Callback failed.");
+				}
+			}
+		}
+
 	}
 
 	public void close() {
@@ -258,7 +284,8 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		try {
 			FileOutputStream fout = new FileOutputStream(FILE);
 			ObjectOutputStream oos = new ObjectOutputStream(fout);
-			oos.writeObject(new CalendarServerData(_events, _userEvents));
+			oos.writeObject(new CalendarServerData(_events, _upcomingEvents,
+					_userEvents));
 			oos.close();
 		} catch (Exception e) {
 			System.err.println("Can't store data.");
@@ -268,20 +295,27 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	private class CalendarServerData implements Serializable {
 
 		private static final long serialVersionUID = 995624507044214456L;
-		private HashMap<Long, Event> _events;
-		private HashMap<String, PriorityQueue<Event>> _userEvents;
+		private final HashMap<Long, Event> _events;
+		private final PriorityQueue<Event> _upcomingEvents;
+		private final HashMap<String, ArrayList<Event>> _userEvents;
 
 		public CalendarServerData(HashMap<Long, Event> events,
-				HashMap<String, PriorityQueue<Event>> userEvents) {
+				PriorityQueue<Event> upcomingEvents,
+				HashMap<String, ArrayList<Event>> userEvents) {
 			_events = events;
+			_upcomingEvents = upcomingEvents;
 			_userEvents = userEvents;
+		}
+
+		public PriorityQueue<Event> getUpcomingEvents() {
+			return _upcomingEvents;
 		}
 
 		public HashMap<Long, Event> getEvents() {
 			return _events;
 		}
 
-		public HashMap<String, PriorityQueue<Event>> getUserEvents() {
+		public HashMap<String, ArrayList<Event>> getUserEvents() {
 			return _userEvents;
 		}
 
@@ -289,7 +323,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 
 	private class CalendarServerUI implements Runnable {
 
-		private CalendarServerImpl _server;
+		private final CalendarServerImpl _server;
 
 		public CalendarServerUI(CalendarServerImpl server) {
 			_server = server;
@@ -323,6 +357,45 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 			// No other way to close RMI, ...
 			System.exit(0);
 		}
+	}
 
+	private class CalendarServerNotificator implements Runnable {
+
+		private final CalendarServerImpl _server;
+		private static final int SLEEP = 200;
+
+		public CalendarServerNotificator(CalendarServerImpl server) {
+			_server = server;
+		}
+
+		@Override
+		public void run() {
+			
+			Calendar calendar = Calendar.getInstance();
+			long currentTime = calendar.getTime().getTime();
+
+			PriorityQueue<Event> events = _server.getUpcomingEvents();
+			Event event = events.peek();
+			if(event != null) {
+				long abs = currentTime - event.getBegin().getTime();
+				if(abs < SLEEP * (-1)) {
+					// Rather old event
+					events.poll();
+				}
+				else if(abs < SLEEP) {
+					// Notifiy
+					events.poll();
+					_server.nextEvent(event);
+				}
+			}
+			
+			
+			try {
+				Thread.sleep(SLEEP);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+		}
 	}
 }

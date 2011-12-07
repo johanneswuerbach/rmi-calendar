@@ -25,12 +25,14 @@ public class CalendarClient implements EventCallback {
 	public void run() {
 		System.out.print("Welcome to calendar client.\n"
 				+ "Possible commands:\n"
-				+ "add: <name>;<users>;<date> - to add an event\n"
-				+ "remove: <id> - to remove an event\n"
-				+ "update: <id>;<name>;<users>;<date> - to modifiy an event\n"
-				+ "list: <user> - show all events for a user\n"
-				+ "next: <user> - get next event for user\n"
-				+ "register: <user> - register for upcoming events\n"
+				+ "<users> is a comma sperated list of strings\n"
+				+ "<date> is a date in this format dd-MM-yyyy HH:mm:ss\n"
+				+ "add <name>;<users>;<date> - to add an event\n"
+				+ "remove <id> - to remove an event\n"
+				+ "update <id>;<name>;<users>;<date> - to modifiy an event\n"
+				+ "list <user> - show all events for a user\n"
+				+ "next <user> - get next event for user\n"
+				+ "register <user> - register for upcoming events\n"
 				+ "unregister - unregister from event notifications\n"
 				+ "quite - to close the client\n");
 
@@ -100,6 +102,13 @@ public class CalendarClient implements EventCallback {
 			br.close();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+		
+		// Unregister from all callbacks
+		try {
+			_calendarServer.UnregisterCallback(this);
+		} catch (RemoteException e) {
+			System.err.println("Can't unregister from callbacks");
 		}
 
 		System.out.println("Bye.");

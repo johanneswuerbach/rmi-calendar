@@ -77,7 +77,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Adds an event
 	 */
-	public long addEvent(Event e) throws RemoteException {
+	public synchronized long addEvent(Event e) throws RemoteException {
 		long id = e.getBegin().getTime();
 		while (_events.containsValue(id)) {
 			id++;
@@ -96,7 +96,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Removes an event by id
 	 */
-	public boolean removeEvent(long id) throws RemoteException {
+	public synchronized boolean removeEvent(long id) throws RemoteException {
 
 		// Remove from storage
 		Event e = _events.remove(id);
@@ -113,7 +113,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Updates an event
 	 */
-	public boolean updateEvent(long id, Event e) throws RemoteException {
+	public synchronized boolean updateEvent(long id, Event e) throws RemoteException {
 		e.setId(id);
 		Event oldEvent = _events.get(id);
 		if (oldEvent == null) {
@@ -240,7 +240,6 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	@Override
 	public void UnregisterCallback(EventCallback ec) throws RemoteException {
 		// TODO Auto-generated method stub
-
 	}
 
 	public void close() {
@@ -321,6 +320,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 			}
 
 			System.out.println("Bye.");
+			// No other way to close RMI, ...
 			System.exit(0);
 		}
 

@@ -12,7 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.List;
 
-public class CalendarClient {
+public class CalendarClient implements EventCallback {
 
 	CalendarServer _calendarServer;
 
@@ -28,7 +28,10 @@ public class CalendarClient {
 				+ "add: <name>;<users>;<date> - to add an event\n"
 				+ "remove: <id> - to remove an event\n"
 				+ "update: <id>;<name>;<users>;<date> - to modifiy an event\n"
-				+ "list: <user>\n" + "next: <user>\n"
+				+ "list: <user> - show all events for a user\n"
+				+ "next: <user> - get next event for user\n"
+				+ "register: <user> - register for upcoming events\n"
+				+ "unregister - unregister from event notifications\n"
 				+ "quite - to close the client\n");
 
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -80,6 +83,11 @@ public class CalendarClient {
 								System.out.println(event);
 							}
 						}
+					} else if (line.startsWith("register")) {
+						String params[] = getParameters(line);
+						_calendarServer.RegisterCallback(this, params[0]);
+					} else if (line.startsWith("unregister")) {
+						_calendarServer.UnregisterCallback(this);
 					} else if (line.equals("quite")) {
 						break;
 					}
@@ -116,4 +124,11 @@ public class CalendarClient {
 
 		throw new IllegalArgumentException();
 	}
+
+	@Override
+	public void call(Event e) throws RemoteException {
+		System.out.println("Notification from server");
+		System.out.println(e);
+	}
+
 }

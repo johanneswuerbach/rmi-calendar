@@ -29,12 +29,12 @@ public class CalendarClient implements EventCallback, Serializable {
 				+ "Possible commands:\n"
 				+ "<users> is a comma sperated list of strings\n"
 				+ "<date> is a date in this format dd-MM-yyyy HH:mm:ss\n"
-				+ "add <name>;<users>;<date> - to add an event\n"
-				+ "remove <id> - to remove an event\n"
-				+ "update <id>;<name>;<users>;<date> - to modifiy an event\n"
-				+ "list <user> - show all events for a user\n"
-				+ "next <user> - get next event for user\n"
-				+ "register <user> - register for upcoming events\n"
+				+ "add: <name>;<users>;<date> - to add an event\n"
+				+ "remove: <id> - to remove an event\n"
+				+ "update: <id>;<name>;<users>;<date> - to modifiy an event\n"
+				+ "list: <user> - show all events for a user\n"
+				+ "next: <user> - get next event for user\n"
+				+ "register: <user> - register for upcoming events\n"
 				+ "unregister - unregister from event notifications\n"
 				+ "quite - to close the client\n");
 
@@ -130,7 +130,7 @@ public class CalendarClient implements EventCallback, Serializable {
 	}
 
 	public String[] getParameters(String line) throws IllegalArgumentException {
-		String[] parts = line.split(" ");
+		String[] parts = line.split(": ");
 		if (parts.length == 2) {
 			return parts[1].split(";");
 		}

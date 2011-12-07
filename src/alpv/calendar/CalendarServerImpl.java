@@ -36,6 +36,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	private final HashMap<String, ArrayList<Event>> _userEvents;
 	private final HashMap<String, ArrayList<EventCallback>> _userCallbacks;
 
+	private boolean _running;
 	private final Registry _registry;
 
 	public CalendarServerImpl(int port) throws RemoteException {
@@ -76,12 +77,15 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		} catch (UnknownHostException e) {
 			System.err.println("Can't determine adress.");
 		}
+		
+		// Set running
+		_running = true;
 
 		// Create UI
-		(new Thread(new CalendarServerUI(this))).run();
+		(new Thread(new CalendarServerUI(this))).start();
 
 		// Create Notificator
-		(new Thread(new CalendarServerNotificator(this))).run();
+		(new Thread(new CalendarServerNotificator(this))).start();
 	}
 
 	/**
@@ -100,6 +104,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		// Store user -> events
 		addToUsers(Arrays.asList(e.getUser()), e);
 
+		// Add to queue
+		_upcomingEvents.add(e);
+
 		return id;
 	}
 
@@ -113,6 +120,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		if (e == null) {
 			return false;
 		}
+
+		// Remove from queue
+		_upcomingEvents.remove(e);
 
 		// Remove from users
 		removeFromUsers(Arrays.asList(e.getUser()), e);
@@ -194,7 +204,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 
 	public List<Event> listEvents(String user) throws RemoteException {
 		ArrayList<Event> events = _userEvents.get(user);
-		if(events == null) {
+		if (events == null) {
 			events = new ArrayList<Event>();
 		}
 		return events;
@@ -210,35 +220,36 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	 */
 	public void RegisterCallback(EventCallback ec, String user)
 			throws RemoteException {
-		
+
 		ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
-		if(callbacks == null) {
+		if (callbacks == null) {
 			callbacks = new ArrayList<EventCallback>();
 		}
 		callbacks.add(ec);
-		
+
 		_userCallbacks.put(user, callbacks);
-		
+
 	}
-	
+
 	/**
 	 * Unregister from event all registered callbacks
 	 */
 	public void UnregisterCallback(EventCallback ec) throws RemoteException {
 		Collection<ArrayList<EventCallback>> values = _userCallbacks.values();
-		for(ArrayList<EventCallback> list : values) {
-			if(list.contains(ec)) {
+		for (ArrayList<EventCallback> list : values) {
+			if (list.contains(ec)) {
 				list.remove(ec);
 			}
 		}
 	}
-	
+
 	/**
 	 * Unregister from a single notification
 	 */
-	public void UnregisterCallback(EventCallback ec, String user) throws RemoteException {
+	public void UnregisterCallback(EventCallback ec, String user)
+			throws RemoteException {
 		ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
-		if(callbacks != null) {
+		if (callbacks != null) {
 			callbacks.remove(ec);
 			_userCallbacks.put(user, callbacks);
 		}
@@ -269,6 +280,9 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	}
 
 	public void close() {
+
+		_running = false;
+
 		// Close RMI
 		try {
 			_registry.unbind("calendarServer");
@@ -290,6 +304,10 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		} catch (Exception e) {
 			System.err.println("Can't store data.");
 		}
+	}
+
+	public boolean running() {
+		return _running;
 	}
 
 	private class CalendarServerData implements Serializable {
@@ -363,39 +381,60 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 
 		private final CalendarServerImpl _server;
 		private static final int SLEEP = 200;
+		private long _lastRun;
 
 		public CalendarServerNotificator(CalendarServerImpl server) {
 			_server = server;
+			_lastRun = currentTime();
 		}
 
 		@Override
 		public void run() {
 			
+			while (_server.running()) {
+
+				PriorityQueue<Event> events = _server.getUpcomingEvents();
+
+				// Remove all events before last run
+				Event event = events.peek();
+				boolean found = false;
+				while(event != null && !found) {
+					System.out.println(events.size());
+					if (_lastRun < event.getBegin().getTime()) {
+						events.poll();
+						event = events.peek();
+					} else {
+						found = true;
+					}
+				}
+
+				long currentTime = currentTime();
+				if (event != null) {
+					System.out.println("Found");
+					long abs = event.getBegin().getTime() - _lastRun;
+					if (abs < SLEEP) {
+						// Notifiy
+						events.poll();
+						_server.nextEvent(event);
+						System.out.println("Notifiy");
+					}
+				}
+
+				_lastRun = currentTime;
+
+				try {
+					Thread.sleep(SLEEP);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+			}
+
+		}
+
+		public long currentTime() {
 			Calendar calendar = Calendar.getInstance();
-			long currentTime = calendar.getTime().getTime();
-
-			PriorityQueue<Event> events = _server.getUpcomingEvents();
-			Event event = events.peek();
-			if(event != null) {
-				long abs = currentTime - event.getBegin().getTime();
-				if(abs < SLEEP * (-1)) {
-					// Rather old event
-					events.poll();
-				}
-				else if(abs < SLEEP) {
-					// Notifiy
-					events.poll();
-					_server.nextEvent(event);
-				}
-			}
-			
-			
-			try {
-				Thread.sleep(SLEEP);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
+			return calendar.getTime().getTime();
 		}
 	}
 }

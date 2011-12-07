@@ -107,7 +107,7 @@ public final class Event implements Serializable, Comparable<Event> {
 		String event = "Id: " + this.getId() + "\n"
 		+ "Date: " + date + "\n"
 		+ "Name: " + this.getName() + "\n"
-		+ "Users: " + Arrays.toString(this.getUser()) + "\n";
+		+ "Users: " + Arrays.toString(this.getUser());
 		return event;
 	}
 }

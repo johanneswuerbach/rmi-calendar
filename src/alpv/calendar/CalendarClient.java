@@ -93,6 +93,8 @@ public class CalendarClient implements EventCallback {
 					}
 				} catch (ParseException e) {
 					System.err.println("Invalid date format.");
+				} catch (IllegalArgumentException e) {
+					System.err.println("Invalid arguments.");
 				}
 			}
 			br.close();
@@ -116,7 +118,7 @@ public class CalendarClient implements EventCallback {
 
 	}
 
-	public String[] getParameters(String line) {
+	public String[] getParameters(String line) throws IllegalArgumentException {
 		String[] parts = line.split(" ");
 		if (parts.length == 2) {
 			return parts[1].split(";");

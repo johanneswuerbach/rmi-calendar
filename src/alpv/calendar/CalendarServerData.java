@@ -8,7 +8,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.PriorityQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * Container for all server data
@@ -20,18 +20,18 @@ public class CalendarServerData implements Serializable {
 	private static final String FILE = "calendar.dat";
 
 	private final HashMap<Long, Event> _events;
-	private final PriorityQueue<Event> _upcomingEvents;
+	private final PriorityBlockingQueue<Event> _upcomingEvents;
 	private final HashMap<String, ArrayList<Event>> _userEvents;
 
 	public CalendarServerData(HashMap<Long, Event> events,
-			PriorityQueue<Event> upcomingEvents,
+			PriorityBlockingQueue<Event> upcomingEvents,
 			HashMap<String, ArrayList<Event>> userEvents) {
 		_events = events;
 		_upcomingEvents = upcomingEvents;
 		_userEvents = userEvents;
 	}
 
-	public PriorityQueue<Event> getUpcomingEvents() {
+	public PriorityBlockingQueue<Event> getUpcomingEvents() {
 		return _upcomingEvents;
 	}
 
@@ -70,7 +70,7 @@ public class CalendarServerData implements Serializable {
 	 * Save data to a file
 	 */
 	public static boolean save(HashMap<Long, Event> events,
-			PriorityQueue<Event> upcomingEvents,
+			PriorityBlockingQueue<Event> upcomingEvents,
 			HashMap<String, ArrayList<Event>> userEvents) {
 
 		try {

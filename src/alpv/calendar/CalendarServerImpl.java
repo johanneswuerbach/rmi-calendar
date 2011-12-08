@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.PriorityQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 public class CalendarServerImpl extends UnicastRemoteObject implements
 		CalendarServer {
@@ -22,7 +22,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	private static final String NAME = "calendarServer";
 
 	private final HashMap<Long, Event> _events;
-	private final PriorityQueue<Event> _upcomingEvents;
+	private final PriorityBlockingQueue<Event> _upcomingEvents;
 	private final HashMap<String, ArrayList<Event>> _userEvents;
 	private final HashMap<String, ArrayList<EventCallback>> _userCallbacks;
 
@@ -35,7 +35,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		CalendarServerData calendarData = CalendarServerData.load();
 		if (calendarData == null) {
 			_events = new HashMap<Long, Event>();
-			_upcomingEvents = new PriorityQueue<Event>();
+			_upcomingEvents = new PriorityBlockingQueue<Event>();
 			_userEvents = new HashMap<String, ArrayList<Event>>();
 		} else {
 			_events = calendarData.getEvents();
@@ -242,7 +242,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Get list of upcoming events
 	 */
-	PriorityQueue<Event> getUpcomingEvents() {
+	PriorityBlockingQueue<Event> getUpcomingEvents() {
 		return _upcomingEvents;
 	}
 

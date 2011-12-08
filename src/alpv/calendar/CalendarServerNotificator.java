@@ -1,7 +1,7 @@
 package alpv.calendar;
 
 import java.util.Calendar;
-import java.util.PriorityQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * Checks event queue for now starting events
@@ -24,7 +24,7 @@ public class CalendarServerNotificator implements Runnable {
 
 		while (_server.running()) {
 
-			PriorityQueue<Event> events = _server.getUpcomingEvents();
+			PriorityBlockingQueue<Event> events = _server.getUpcomingEvents();
 
 			// Remove all events before last run
 			Event event = events.peek();

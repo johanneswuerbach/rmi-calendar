@@ -186,7 +186,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * List events for a specific user
 	 */
-	public List<Event> listEvents(String user) throws RemoteException {
+	public synchronized List<Event> listEvents(String user) throws RemoteException {
 		ArrayList<Event> events = _userEvents.get(user);
 		if (events == null) {
 			events = new ArrayList<Event>();
@@ -202,7 +202,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Register for event callbacks for a specific user
 	 */
-	public void RegisterCallback(EventCallback ec, String user)
+	public synchronized void RegisterCallback(EventCallback ec, String user)
 			throws RemoteException {
 
 		ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
@@ -218,7 +218,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Unregister from event all registered callbacks
 	 */
-	public void UnregisterCallback(EventCallback ec) throws RemoteException {
+	public synchronized void UnregisterCallback(EventCallback ec) throws RemoteException {
 		Collection<ArrayList<EventCallback>> values = _userCallbacks.values();
 		for (ArrayList<EventCallback> list : values) {
 			if (list.contains(ec)) {
@@ -230,7 +230,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Unregister from a single notification
 	 */
-	public void UnregisterCallback(EventCallback ec, String user)
+	public synchronized void UnregisterCallback(EventCallback ec, String user)
 			throws RemoteException {
 		ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
 		if (callbacks != null) {
@@ -242,14 +242,14 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Get list of upcoming events
 	 */
-	PriorityBlockingQueue<Event> getUpcomingEvents() {
+	public PriorityBlockingQueue<Event> getUpcomingEvents() {
 		return _upcomingEvents;
 	}
 
 	/**
 	 * Notifiy about an event
 	 */
-	public void notify(Event event) {
+	public synchronized void notify(Event event) {
 		for (String user : event.getUser()) {
 			ArrayList<EventCallback> callbacks = _userCallbacks.get(user);
 			if (callbacks != null) {
@@ -299,7 +299,7 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Removes all data
 	 */
-	public void flush() {
+	public synchronized void flush() {
 		_events.clear();
 		_upcomingEvents.clear();
 		_userEvents.clear();

@@ -186,17 +186,13 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * List events for a specific user
 	 */
-	public synchronized List<Event> listEvents(String user) throws RemoteException {
+	public synchronized List<Event> listEvents(String user)
+			throws RemoteException {
 		ArrayList<Event> events = _userEvents.get(user);
 		if (events == null) {
 			events = new ArrayList<Event>();
 		}
 		return events;
-	}
-
-	public Event getNextEvent(String user) throws RemoteException {
-		// TODO
-		return null;
 	}
 
 	/**
@@ -218,7 +214,8 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 	/**
 	 * Unregister from event all registered callbacks
 	 */
-	public synchronized void UnregisterCallback(EventCallback ec) throws RemoteException {
+	public synchronized void UnregisterCallback(EventCallback ec)
+			throws RemoteException {
 		Collection<ArrayList<EventCallback>> values = _userCallbacks.values();
 		for (ArrayList<EventCallback> list : values) {
 			if (list.contains(ec)) {
@@ -304,5 +301,22 @@ public class CalendarServerImpl extends UnicastRemoteObject implements
 		_upcomingEvents.clear();
 		_userEvents.clear();
 		_userCallbacks.clear();
+	}
+
+	public Event getNextEvent(String user) throws RemoteException {
+		Event nextEvent = _upcomingEvents.peek();
+		for (; !nextEvent.getUser().equals(user) && nextEvent != null; _upcomingEvents
+				.remove(nextEvent), _upcomingEvents.peek()) {
+			waitForEvent(nextEvent);
+		}
+		waitForEvent(nextEvent);
+		return nextEvent;
+	}
+
+	private static void waitForEvent(Event event) {
+		try {
+			Thread.sleep(event.timeToBegin());
+		} catch (InterruptedException e) {
+		}
 	}
 }

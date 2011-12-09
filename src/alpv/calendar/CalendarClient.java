@@ -47,13 +47,13 @@ public class CalendarClient implements EventCallback, Serializable {
 				try {
 					if (line.startsWith("add:")) {
 						// Add a new event
-						String params[] = getParameters(line);
+						String params[] = getParameters(line, 3);
 						long id = _calendarServer.addEvent(parseEvent(
 								params[0], params[1], params[2]));
 						System.out.println("Event created with id: " + id);
 					} else if (line.startsWith("update:")) {
 						// Update an event
-						String params[] = getParameters(line);
+						String params[] = getParameters(line, 4);
 						boolean success = _calendarServer.updateEvent(
 								(new Long(params[0])).longValue(),
 								parseEvent(params[1], params[2], params[3]));
@@ -66,7 +66,7 @@ public class CalendarClient implements EventCallback, Serializable {
 
 					} else if (line.startsWith("remove:")) {
 						// Remove an event
-						String params[] = getParameters(line);
+						String params[] = getParameters(line, 1);
 						boolean success = _calendarServer
 								.removeEvent((new Long(params[0])).longValue());
 
@@ -77,7 +77,7 @@ public class CalendarClient implements EventCallback, Serializable {
 						}
 
 					} else if (line.startsWith("list:")) {
-						String params[] = getParameters(line);
+						String params[] = getParameters(line, 1);
 						List<Event> events = _calendarServer
 								.listEvents(params[0]);
 						if (events.isEmpty()) {
@@ -88,7 +88,7 @@ public class CalendarClient implements EventCallback, Serializable {
 							}
 						}
 					} else if (line.startsWith("register:")) {
-						String params[] = getParameters(line);
+						String params[] = getParameters(line, 1);
 						_calendarServer.RegisterCallback(this, params[0]);
 					} else if (line.startsWith("unregister:")) {
 						_calendarServer.UnregisterCallback(this);
@@ -137,10 +137,14 @@ public class CalendarClient implements EventCallback, Serializable {
 	/**
 	 * Parse list of parameters from string
 	 */
-	public String[] getParameters(String line) throws IllegalArgumentException {
+	public String[] getParameters(String line, int length)
+			throws IllegalArgumentException {
 		String[] parts = line.split(": ");
 		if (parts.length == 2) {
-			return parts[1].split(";");
+			String[] params = parts[1].split(";");
+			if (params.length == length) {
+				return params;
+			}
 		}
 
 		throw new IllegalArgumentException();

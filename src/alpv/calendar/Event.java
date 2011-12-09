@@ -105,4 +105,8 @@ public final class Event implements Serializable, Comparable<Event> {
 		+ "Users: " + Arrays.toString(this.getUser());
 		return event;
 	}
+	
+	public long timeToBegin() {
+		return this.begin.getTime() - System.currentTimeMillis();
+	}
 }
